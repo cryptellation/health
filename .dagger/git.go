@@ -12,29 +12,39 @@ type Git struct {
 	container *dagger.Container
 }
 
+// NewGitOptions contains the options for creating a new Git container.
+type NewGitOptions struct {
+	SrcDir *dagger.Directory
+	User   *string
+	Token  *dagger.Secret
+}
+
 // NewGit creates a new Git container with the given source directory and token.
-func NewGit(ctx context.Context, srcDir *dagger.Directory, token *dagger.Secret) (Git, error) {
+func NewGit(ctx context.Context, opts NewGitOptions) (Git, error) {
 	var err error
 
 	// Create container
 	container := dag.Container().
 		From("alpine/git").
-		WithMountedDirectory("/git", srcDir).
+		WithMountedDirectory("/git", opts.SrcDir).
 		WithWorkdir("/git").
 		WithoutEntrypoint()
 
-	// Set authentication based on the token
-	tokenString, err := token.Plaintext(ctx)
-	if err != nil {
-		return Git{}, err
-	}
+	// Set user/token if provided
+	if opts.User != nil && opts.Token != nil {
+		// Set authentication based on the token
+		tokenString, err := opts.Token.Plaintext(ctx)
+		if err != nil {
+			return Git{}, err
+		}
 
-	// Change the url to use the token
-	container, err = container.WithExec([]string{
-		"git", "remote", "set-url", "origin", "https://lerenn:" + tokenString + "@github.com/cryptellation/health.git",
-	}).Sync(ctx)
-	if err != nil {
-		return Git{}, err
+		// Change the url to use the token
+		container, err = container.WithExec([]string{
+			"git", "remote", "set-url", "origin", "https://" + *opts.User + ":" + tokenString + "@github.com/cryptellation/health.git",
+		}).Sync(ctx)
+		if err != nil {
+			return Git{}, err
+		}
 	}
 
 	// Set Git author
