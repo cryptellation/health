@@ -9,6 +9,19 @@ on:
       - main
 
 jobs:
+  check:
+    name: Run code custom check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dagger/dagger-for-github@8.0.0
+        with:
+          version: latest
+          verb: call
+          args: check --source-dir=. stdout
+
   lint:
     name: Run linter
     if: github.event_name == 'pull_request'
@@ -24,7 +37,7 @@ jobs:
 
   unit-tests:
     name: Run unit tests
-    needs: ["lint"]
+    needs: ["lint", "check"]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
