@@ -1,7 +1,6 @@
 package health
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +18,7 @@ type HealthSuite struct {
 }
 
 func (suite *HealthSuite) SetupTest() {
-	h, err := NewHealth(context.Background())
+	h, err := NewHealth()
 	suite.Require().NoError(err)
 	suite.health = h
 }
