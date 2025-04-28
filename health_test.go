@@ -18,7 +18,7 @@ type HealthSuite struct {
 }
 
 func (suite *HealthSuite) SetupTest() {
-	h, err := NewHealth()
+	h, err := New(":9000")
 	suite.Require().NoError(err)
 	suite.health = h
 }
