@@ -18,7 +18,7 @@ import (
 	"context"
 	"runtime"
 
-	"github.com/cryptellation/version/dagger/internal/dagger"
+	"github.com/cryptellation/health/dagger/internal/dagger"
 )
 
 type Health struct{}

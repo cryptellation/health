@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cryptellation/version/dagger/internal/dagger"
+	"github.com/cryptellation/health/dagger/internal/dagger"
 )
 
 // Git provides access to a git repository.
