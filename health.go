@@ -72,7 +72,11 @@ func (h *Health) Serve(ctx context.Context) error {
 		// Shutdown the server using a context derived from the parent
 		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		return h.srv.Shutdown(shutdownCtx)
+		if err := h.srv.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+
+		return ctx.Err()
 	case err := <-serverErr: // Server error
 		return err
 	}
