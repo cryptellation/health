@@ -3,8 +3,10 @@ package health
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"sync/atomic"
+	"time"
 )
 
 // Health is a health checker.
@@ -32,48 +34,48 @@ func (h *Health) Ready(isReady bool) {
 	h.isReady.Store(isReady)
 }
 
-// Serve starts the health checker synchronously.
-func (h *Health) Serve() error {
-	// Check if the server is started
+// Serve starts the health checker synchronously and listens for context cancellation.
+func (h *Health) Serve(ctx context.Context) error {
+	// Check if the server is already started
 	if h.srv != nil {
 		return errors.New("server already started")
 	}
 
-	// Register the handlers
-	http.HandleFunc("/liveness", h.liveness())
-	http.HandleFunc("/readiness", h.readiness())
+	// Register handlers
+	mux := http.NewServeMux()
+	mux.HandleFunc("/liveness", h.liveness())
+	mux.HandleFunc("/readiness", h.readiness())
 
-	// Start the server
-	// NOTE: This is a blocking call
-	h.srv = &http.Server{Addr: h.addr}
-	err := h.srv.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
+	// Create server
+	h.srv = &http.Server{Addr: h.addr, Handler: mux}
+	defer func() { h.srv = nil }()
 
-	return nil
-}
-
-// Shutdown stops the health checker.
-func (h *Health) Shutdown(ctx context.Context) error {
-	// Check if the server is started
-	if h.srv == nil {
-		return errors.New("server not started")
-	}
-
-	// Set the readiness to false just in case
-	h.Ready(false)
-
-	// Shutdown the server
-	err := h.srv.Shutdown(ctx)
+	// Listen for connections
+	ln, err := net.Listen("tcp", h.addr)
 	if err != nil {
 		return err
 	}
+	defer ln.Close()
 
-	// Set the server to nil
-	h.srv = nil
+	// Start server in background
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- h.srv.Serve(ln)
+	}()
+	defer close(serverErr)
 
-	return nil
+	select {
+	case <-ctx.Done(): // Context cancelled
+		// Set readiness to false
+		h.Ready(false)
+
+		// Shutdown the server using a context derived from the parent
+		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return h.srv.Shutdown(shutdownCtx)
+	case err := <-serverErr: // Server error
+		return err
+	}
 }
 
 func (h *Health) liveness() http.HandlerFunc {
