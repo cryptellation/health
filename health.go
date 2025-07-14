@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync/atomic"
+	"time"
 )
 
 // Health is a health checker.
@@ -68,8 +69,10 @@ func (h *Health) Serve(ctx context.Context) error {
 		// Set readiness to false
 		h.Ready(false)
 
-		// Shutdown the server
-		return h.srv.Shutdown(context.Background())
+		// Shutdown the server using a context derived from the parent
+		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return h.srv.Shutdown(shutdownCtx)
 	case err := <-serverErr: // Server error
 		return err
 	}
