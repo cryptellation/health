@@ -44,13 +44,13 @@ func (ci *Health) PublishTag(
 	return repo.PublishTagFromReleaseTitle(ctx)
 }
 
-// Check returns a container that runs the checker.
+// Check returns a container that runs the codechecker.
 func (ci *Health) Check(
 	sourceDir *dagger.Directory,
 ) *dagger.Container {
-	c := dag.Container().From("ghcr.io/cryptellation/checker")
+	c := dag.Container().From("ghcr.io/cryptellation/codechecker")
 	return ci.withGoCodeAndCacheAsWorkDirectory(c, sourceDir).
-		WithExec([]string{"checker", "--check-test-tags=false"})
+		WithExec([]string{"codechecker", "--check-test-tags=false"})
 }
 
 // Lint runs golangci-lint on the main repo (./...) only.
